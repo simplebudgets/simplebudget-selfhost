@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/simplesuite/simplesuite-selfhost/blob/main/LICENSE"><img src="https://img.shields.io/github/license/simplesuite/simplesuite-selfhost" alt="License" /></a>
+  <a href="https://github.com/simplesuite/simplesuite-selfhost/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License" /></a>
   <a href="https://github.com/simplesuite/simplesuite-selfhost/stargazers"><img src="https://img.shields.io/github/stars/simplesuite/simplesuite-selfhost" alt="Stars" /></a>
   <a href="https://github.com/simplesuite/simplesuite-selfhost/issues"><img src="https://img.shields.io/github/issues/simplesuite/simplesuite-selfhost" alt="Issues" /></a>
 </p>
