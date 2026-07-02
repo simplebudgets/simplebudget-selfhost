@@ -10,45 +10,46 @@ CREATE TABLE IF NOT EXISTS public.task_projects (
   "creatorID" uuid NOT NULL,
   "name" character varying NOT NULL,
   "description" text NOT NULL DEFAULT '',
-  "createdAt" numeric NOT NULL,
-  "updatedAt" numeric NOT NULL
+  "createdAt" bigint NOT NULL,
+  "updatedAt" bigint NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.task_projects_shared (
   "recordID" character varying NOT NULL PRIMARY KEY,
   "projectID" character varying NOT NULL,
-  "creatorID" uuid NOT NULL,
   "sharedToID" uuid NOT NULL,
-  "createdAt" numeric NOT NULL
+  "createdAt" bigint NOT NULL,
+  "creatorID" uuid NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.notes (
   "recordID" character varying NOT NULL PRIMARY KEY,
   "creatorID" uuid NOT NULL,
-  "title" character varying NOT NULL,
+  "title" character varying NOT NULL DEFAULT '',
   "body" text NOT NULL DEFAULT '',
-  "createdAt" numeric NOT NULL,
-  "updatedAt" numeric NOT NULL,
-  "projectID" character varying,
+  "createdAt" bigint NOT NULL,
+  "updatedAt" bigint NOT NULL,
   "archived" boolean NOT NULL DEFAULT false,
+  "projectID" character varying,
   "pinned" boolean NOT NULL DEFAULT false,
-  "noteType" character varying NOT NULL DEFAULT 'text'
+  "noteType" character varying DEFAULT 'text'
 );
 
 CREATE TABLE IF NOT EXISTS public.notes_listitems (
   "recordID" character varying NOT NULL PRIMARY KEY,
   "noteID" character varying NOT NULL,
-  "title" character varying NOT NULL,
+  "title" character varying NOT NULL DEFAULT '',
   "isCompleted" boolean NOT NULL DEFAULT false,
-  "createdAt" numeric NOT NULL,
-  "updatedAt" numeric NOT NULL
+  "createdAt" bigint NOT NULL,
+  "updatedAt" bigint NOT NULL,
+  "indexOrder" integer
 );
 
 CREATE TABLE IF NOT EXISTS public.notes_shared (
   "recordID" character varying NOT NULL PRIMARY KEY,
   "noteID" character varying NOT NULL,
-  "creatorID" uuid NOT NULL,
-  "sharedToID" uuid NOT NULL
+  "sharedToID" uuid NOT NULL,
+  "creatorID" uuid NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.tasks (
@@ -58,14 +59,14 @@ CREATE TABLE IF NOT EXISTS public.tasks (
   "title" character varying NOT NULL,
   "body" text NOT NULL DEFAULT '',
   "status" character varying NOT NULL DEFAULT 'open',
-  "dueDate" numeric,
+  "dueDate" bigint,
   "isRecurring" boolean NOT NULL DEFAULT false,
-  "recurrenceInterval" numeric,
+  "recurrenceInterval" integer,
   "recurrenceUnit" character varying,
   "recurrenceAnchor" character varying NOT NULL DEFAULT 'due_date',
-  "completedAt" numeric,
-  "createdAt" numeric NOT NULL,
-  "updatedAt" numeric NOT NULL
+  "completedAt" bigint,
+  "createdAt" bigint NOT NULL,
+  "updatedAt" bigint NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.task_subtasks (
@@ -73,8 +74,8 @@ CREATE TABLE IF NOT EXISTS public.task_subtasks (
   "taskID" character varying NOT NULL,
   "title" character varying NOT NULL,
   "isCompleted" boolean NOT NULL DEFAULT false,
-  "createdAt" numeric NOT NULL,
-  "updatedAt" numeric NOT NULL
+  "createdAt" bigint NOT NULL,
+  "updatedAt" bigint NOT NULL
 );
 
 -- =============================================================================

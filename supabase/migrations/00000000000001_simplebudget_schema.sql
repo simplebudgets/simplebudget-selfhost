@@ -1,45 +1,9 @@
--- Initial schema migration for SimpleBudget
--- Creates all tables, foreign keys, RLS policies, and required roles
-
--- =============================================================================
--- Roles (required for PostgREST and GoTrue)
--- =============================================================================
-
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN
-    CREATE ROLE anon NOLOGIN NOINHERIT;
-  END IF;
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
-    CREATE ROLE authenticated NOLOGIN NOINHERIT;
-  END IF;
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN
-    CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS;
-  END IF;
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticator') THEN
-    CREATE ROLE authenticator NOINHERIT LOGIN;
-  END IF;
-END
-$$;
-
-GRANT anon TO authenticator;
-GRANT authenticated TO authenticator;
-GRANT service_role TO authenticator;
-
--- =============================================================================
--- Note: auth schema, auth.users table, and auth.uid() function are provided
--- by the supabase/postgres image. No need to create them here.
--- =============================================================================
+-- SimpleBudget schema migration
+-- Creates tables for budgets, sections, categories, shared, and transactions
 
 -- =============================================================================
 -- Tables
 -- =============================================================================
-
-CREATE TABLE IF NOT EXISTS public.users (
-  "recordID" uuid NOT NULL PRIMARY KEY,
-  "fullName" character varying NOT NULL,
-  "userType" character varying NOT NULL
-);
 
 CREATE TABLE IF NOT EXISTS public.budgets (
   "recordID" character varying NOT NULL PRIMARY KEY,
@@ -121,32 +85,11 @@ ALTER TABLE public.transactions
 -- Enable Row Level Security
 -- =============================================================================
 
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shared ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
-
--- =============================================================================
--- RLS Policies: users
--- =============================================================================
-
-CREATE POLICY "INSERT -> authenticated"
-  ON public.users FOR INSERT
-  TO public
-  WITH CHECK (true);
-
-CREATE POLICY "SELECT -> authenticated"
-  ON public.users FOR SELECT
-  TO authenticated
-  USING (true);
-
-CREATE POLICY "UPDATE -> creator"
-  ON public.users FOR UPDATE
-  TO authenticated
-  USING (auth.uid() = "recordID")
-  WITH CHECK (auth.uid() = "recordID");
 
 -- =============================================================================
 -- RLS Policies: budgets
@@ -344,7 +287,8 @@ CREATE POLICY "ALL -> creator/shared + authenticated ./"
 -- Grant permissions to roles
 -- =============================================================================
 
-GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
-GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON public.budgets TO anon, authenticated, service_role;
+GRANT ALL ON public.sections TO anon, authenticated, service_role;
+GRANT ALL ON public.categories TO anon, authenticated, service_role;
+GRANT ALL ON public.shared TO anon, authenticated, service_role;
+GRANT ALL ON public.transactions TO anon, authenticated, service_role;
