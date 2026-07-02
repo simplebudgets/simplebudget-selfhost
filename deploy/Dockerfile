@@ -23,7 +23,7 @@ RUN npm run build
 FROM caddy:2-alpine
 
 # Copy built assets to Caddy's serving directory
-COPY --from=build /app/build /usr/share/caddy
+COPY --from=build /app/dist /usr/share/caddy
 
 # Copy Caddy configuration
 COPY Caddyfile /etc/caddy/Caddyfile
