@@ -151,6 +151,10 @@ All config lives in `deploy/.env`. Run `generate-secrets.sh` to auto-fill secret
 | `POSTGRES_PASSWORD` | *(generated)* | **Private** | Database password |
 | `DASHBOARD_USERNAME` | `admin` | Optional | Studio dashboard username |
 | `DASHBOARD_PASSWORD` | *(generated)* | Optional | Studio dashboard password |
+| `VAPID_PUBLIC_KEY` | *(empty)* | Push | Web Push public key (injected into frontend) |
+| `VAPID_PRIVATE_KEY` | *(empty)* | **Private/Push** | Web Push private key (used by notify worker) |
+| `VAPID_SUBJECT` | `mailto:admin@example.com` | Push | Contact email for push service operators |
+| `CHECK_INTERVAL_MS` | `900000` | Push | How often the worker checks for due items (ms) |
 | `FRONTEND_APP` | `simplebudget` | Frontend | Which app to build: `simplebudget` or `simpletracker` |
 | `FRONTEND_PORT` | `8080` | Frontend | Port for single-app mode (`compose.frontend.yml`) |
 | `SIMPLEBUDGET_PORT` | `8080` | Frontend | simpleBudget port for both-apps mode (`compose.allfrontends.yml`) |
@@ -164,6 +168,7 @@ All config lives in `deploy/.env`. Run `generate-secrets.sh` to auto-fill secret
 |-------------------|--------------|
 | `SUPABASE_PUBLIC_URL` | `SERVICE_ROLE_KEY` |
 | `ANON_KEY` | `JWT_SECRET` |
+| `VAPID_PUBLIC_KEY` | `VAPID_PRIVATE_KEY` |
 | | `POSTGRES_PASSWORD` |
 
 - `deploy/.env` is in `.gitignore` — never commit it.
@@ -213,6 +218,75 @@ tailscale serve --https 8080  # Expose frontend
 ```
 
 Update `SUPABASE_PUBLIC_URL` in `deploy/.env` to your Tailscale URL and restart.
+
+---
+
+## Push Notifications (Optional)
+
+Send push reminders to users' devices — even when the app isn't open. The notification worker checks for due tasks (simpleTracker) and upcoming transactions (simpleBudget) on a schedule and delivers Web Push notifications to subscribed devices.
+
+### How It Works
+
+1. Users toggle "Notifications" in the app settings → browser subscribes to push and stores credentials in the `push_subscriptions` table.
+2. The `notify-worker` container runs every 15 minutes (configurable), queries PostgREST for due/overdue items, and sends Web Push to all active subscriptions.
+3. The Service Worker in each app receives the push and shows a native notification — works on desktop and mobile, even when the app tab is closed.
+
+### Setup
+
+VAPID keys are generated automatically by the `generate-secrets.sh` script (the same one that creates your JWT and database secrets). If you've already run it before adding push support, just run it again — it only fills in missing values:
+
+```bash
+cd deploy && bash scripts/generate-secrets.sh && cd ..
+```
+
+Verify the keys were added to your `deploy/.env`:
+```bash
+grep VAPID deploy/.env
+```
+
+Then restart the stack:
+
+```bash
+docker compose -f deploy/compose.yml down
+docker compose -f deploy/compose.yml up -d --build
+```
+
+The `notify-worker` service starts automatically alongside the rest of the backend. The VAPID public key is injected into the frontend's `config.js` at container startup.
+
+### Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VAPID_PUBLIC_KEY` | *(empty — push disabled)* | Public key shared with browsers |
+| `VAPID_PRIVATE_KEY` | *(empty)* | Private key for signing push messages |
+| `VAPID_SUBJECT` | `mailto:admin@example.com` | Contact URI for push service operators |
+| `CHECK_INTERVAL_MS` | `900000` (15 min) | How often the worker checks for due items |
+
+> **Note:** If `VAPID_PUBLIC_KEY` or `VAPID_PRIVATE_KEY` are not set, the notify worker will exit on startup with an error message. Push notifications are fully opt-in — the rest of the stack works fine without them.
+
+### What Gets Notified
+
+| App | Trigger | Notification |
+|-----|---------|--------------|
+| simpleTracker | Tasks due today or overdue | "2 Task Reminders — 1 overdue, 1 due today" |
+| simpleBudget | Transactions scheduled for tomorrow | "Transaction Reminder — Tomorrow: Rent ($1500.00)" |
+
+### For Supabase Cloud Users
+
+The same worker can run against Supabase Cloud — just point the env vars at your project:
+
+```bash
+POSTGREST_URL=https://yourproject.supabase.co/rest/v1
+SERVICE_ROLE_KEY=your-service-role-key
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+```
+
+You can run the worker as a standalone container, a cron job, or on any serverless platform that supports scheduled execution.
+
+### Disabling Push Notifications
+
+Simply remove (or leave empty) the `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` from your `.env`. The worker won't start, and the frontends won't show the push subscription option to users.
 
 ---
 
@@ -278,22 +352,45 @@ docker compose -f deploy/compose.yml up -d
 ```
 </details>
 
+<details>
+<summary><strong>Notify worker not sending notifications</strong></summary>
+
+```bash
+docker compose -f deploy/compose.yml logs notify-worker
+```
+
+Common causes:
+- **VAPID keys not set** — the worker exits immediately with "Missing required env var" message. Generate keys with `npx web-push generate-vapid-keys`.
+- **No subscriptions in database** — users need to enable notifications in the app settings first.
+- **PostgREST not reachable** — ensure the worker can reach `http://postgrest:3000` (default internal URL).
+- **Expired subscriptions** — the worker automatically removes 410/404 subscriptions. If all subscriptions are expired, no notifications will be sent.
+
+Check subscription count:
+```bash
+docker compose -f deploy/compose.yml exec postgres psql -U postgres -c "SELECT app, count(*) FROM push_subscriptions GROUP BY app;"
+```
+</details>
+
 ---
 
 ## Architecture
 
 ```
-                    ┌─────────────────────────────────────┐
-                    │          Docker Compose              │
-                    │                                     │
- Browser ──────────►│  Kong :8000 (API Gateway)           │
-                    │    ├── /rest/v1/* → PostgREST :3000  │
-                    │    └── /auth/v1/* → GoTrue :9999     │
-                    │                                     │
-                    │  Postgres :5432                      │
-                    │  Migrations (runs once at startup)   │
-                    │  Frontend :8080 (optional, Caddy)    │
-                    └─────────────────────────────────────┘
+                    ┌─────────────────────────────────────────┐
+                    │            Docker Compose                │
+                    │                                         │
+ Browser ──────────►│  Kong :8000 (API Gateway)               │
+                    │    ├── /rest/v1/* → PostgREST :3000      │
+                    │    └── /auth/v1/* → GoTrue :9999         │
+                    │                                         │
+                    │  Postgres :5432                          │
+                    │  Migrations (runs once at startup)       │
+                    │                                         │
+                    │  notify-worker (every 15min)             │
+                    │    └── PostgREST → Web Push delivery     │
+                    │                                         │
+                    │  Frontend :8080 (optional, Caddy)        │
+                    └─────────────────────────────────────────┘
 ```
 
 ---

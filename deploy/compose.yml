@@ -99,5 +99,21 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  notify-worker:
+    build:
+      context: ../notify-worker
+      dockerfile: Dockerfile
+    depends_on:
+      postgrest:
+        condition: service_started
+    environment:
+      POSTGREST_URL: http://postgrest:3000
+      SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@simplesuite.dev}
+      CHECK_INTERVAL_MS: ${CHECK_INTERVAL_MS:-900000}
+    restart: unless-stopped
+
 volumes:
   pgdata:

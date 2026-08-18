@@ -27,4 +27,12 @@ window.__SUPABASE_CONFIG__ = {
 };
 EOF
 
+# Optionally inject VAPID public key for push notifications
+if [ -n "${VAPID_PUBLIC_KEY:-}" ]; then
+  cat >> /usr/share/caddy/config.js <<EOF
+window.__VAPID_PUBLIC_KEY__ = "${VAPID_PUBLIC_KEY}";
+EOF
+  echo "VAPID public key injected into config.js"
+fi
+
 echo "config.js written to /usr/share/caddy/config.js"

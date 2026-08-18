@@ -3,3 +3,5 @@
 deploy/.env
 # dependencies
 /node_modules
+/notify-worker/node_modules
+/notify-worker/dist
