@@ -1,0 +1,21 @@
+{
+  "name": "simplesuite-notify-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Push notification worker for simpleSuite — sends Web Push reminders for due tasks and transactions.",
+  "scripts": {
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.12.0",
+    "@types/web-push": "^3.6.4",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
