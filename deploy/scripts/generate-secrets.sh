@@ -146,6 +146,26 @@ else
   existing_keys+=("SERVICE_ROLE_KEY")
 fi
 
+# Generate VAPID key pair (ECDSA P-256, base64url-encoded)
+current_pub=$(get_env_value "VAPID_PUBLIC_KEY")
+current_priv=$(get_env_value "VAPID_PRIVATE_KEY")
+if [ -z "$current_pub" ] || [ -z "$current_priv" ]; then
+  # Generate a P-256 EC key pair using openssl
+  vapid_privkey_pem=$(openssl ecparam -name prime256v1 -genkey -noout 2>/dev/null)
+
+  # Extract the 32-byte raw private key (d parameter) as base64url
+  vapid_private=$(printf '%s' "$vapid_privkey_pem" | openssl ec -outform DER 2>/dev/null | tail -c +8 | head -c 32 | base64url_encode)
+
+  # Extract the 65-byte uncompressed public key as base64url
+  vapid_public=$(printf '%s' "$vapid_privkey_pem" | openssl ec -pubout -outform DER 2>/dev/null | tail -c 65 | base64url_encode)
+
+  set_env_value "VAPID_PUBLIC_KEY" "$vapid_public"
+  set_env_value "VAPID_PRIVATE_KEY" "$vapid_private"
+  generated_keys+=("VAPID_PUBLIC_KEY" "VAPID_PRIVATE_KEY")
+else
+  existing_keys+=("VAPID_PUBLIC_KEY" "VAPID_PRIVATE_KEY")
+fi
+
 # --- Summary ---
 
 echo "=== Secret Generation Summary ==="

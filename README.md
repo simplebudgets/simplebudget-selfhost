@@ -233,27 +233,22 @@ Send push reminders to users' devices — even when the app isn't open. The noti
 
 ### Setup
 
-**1. Generate VAPID keys:**
+VAPID keys are generated automatically by the `generate-secrets.sh` script (the same one that creates your JWT and database secrets). If you've already run it before adding push support, just run it again — it only fills in missing values:
 
 ```bash
-npx web-push generate-vapid-keys
+cd deploy && bash scripts/generate-secrets.sh && cd ..
 ```
 
-This outputs a public key and a private key.
-
-**2. Add to your `.env`:**
-
+Verify the keys were added to your `deploy/.env`:
 ```bash
-VAPID_PUBLIC_KEY=BPe7K...your-public-key...
-VAPID_PRIVATE_KEY=your-private-key
-VAPID_SUBJECT=mailto:you@example.com
+grep VAPID deploy/.env
 ```
 
-**3. Restart the stack:**
+Then restart the stack:
 
 ```bash
 docker compose -f deploy/compose.yml down
-docker compose -f deploy/compose.yml up -d
+docker compose -f deploy/compose.yml up -d --build
 ```
 
 The `notify-worker` service starts automatically alongside the rest of the backend. The VAPID public key is injected into the frontend's `config.js` at container startup.
