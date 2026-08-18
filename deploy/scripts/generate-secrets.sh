@@ -154,9 +154,10 @@ if [ -z "$current_pub" ] || [ -z "$current_priv" ]; then
   vapid_privkey_pem=$(openssl ecparam -name prime256v1 -genkey -noout 2>/dev/null)
 
   # Extract the 32-byte raw private key (d parameter) as base64url
-  vapid_private=$(printf '%s' "$vapid_privkey_pem" | openssl ec -outform DER 2>/dev/null | tail -c +8 | head -c 32 | base64url_encode)
+  # In the EC PRIVATE KEY DER format, the raw key starts at byte offset 7
+  vapid_private=$(printf '%s' "$vapid_privkey_pem" | openssl ec -outform DER 2>/dev/null | dd bs=1 skip=7 count=32 2>/dev/null | base64url_encode)
 
-  # Extract the 65-byte uncompressed public key as base64url
+  # Extract the 65-byte uncompressed public key (last 65 bytes of the SubjectPublicKeyInfo DER)
   vapid_public=$(printf '%s' "$vapid_privkey_pem" | openssl ec -pubout -outform DER 2>/dev/null | tail -c 65 | base64url_encode)
 
   set_env_value "VAPID_PUBLIC_KEY" "$vapid_public"
