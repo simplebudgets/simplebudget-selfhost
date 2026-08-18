@@ -14,7 +14,7 @@
  */
 
 import webpush from 'web-push';
-import { fetchSubscriptions, fetchTasksDue, fetchTransactionsDue, removeSubscription } from './queries.js';
+import { fetchSubscriptions, fetchTasksDue, fetchTransactionsDue, removeSubscription, markNotified } from './queries.js';
 import { buildTrackerPayload, buildBudgetPayload } from './payloads.js';
 
 // =============================================================================
@@ -72,7 +72,7 @@ async function runCheck(): Promise<void> {
 
                 for (const sub of subs) {
                     const result = await sendPush(sub, payload);
-                    if (result === 'sent') sent++;
+                    if (result === 'sent') { sent++; await markNotified(sub.recordID); }
                     else if (result === 'removed') { removed++; }
                     else failed++;
                 }
@@ -92,7 +92,7 @@ async function runCheck(): Promise<void> {
 
                 for (const sub of subs) {
                     const result = await sendPush(sub, payload);
-                    if (result === 'sent') sent++;
+                    if (result === 'sent') { sent++; await markNotified(sub.recordID); }
                     else if (result === 'removed') { removed++; }
                     else failed++;
                 }

@@ -77,14 +77,27 @@ async function postgrestDelete(path: string): Promise<void> {
 }
 
 // =============================================================================
+// Helpers
+// =============================================================================
+
+function getTodayString(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+// =============================================================================
 // Public API
 // =============================================================================
 
 /**
  * Fetch all push subscriptions for a given app.
+ * Only returns subscriptions that haven't been notified today.
  */
 export async function fetchSubscriptions(app: string): Promise<Subscription[]> {
-    return postgrestGet<Subscription>(`/push_subscriptions?app=eq.${app}&select=recordID,userID,endpoint,keyP256dh,keyAuth`);
+    const today = getTodayString();
+    return postgrestGet<Subscription>(
+        `/push_subscriptions?app=eq.${app}&or=(lastNotifiedDate.is.null,lastNotifiedDate.neq.${today})&select=recordID,userID,endpoint,keyP256dh,keyAuth`
+    );
 }
 
 /**
@@ -92,6 +105,29 @@ export async function fetchSubscriptions(app: string): Promise<Subscription[]> {
  */
 export async function removeSubscription(recordID: string): Promise<void> {
     return postgrestDelete(`/push_subscriptions?recordID=eq.${recordID}`);
+}
+
+/**
+ * Mark a subscription as notified today so it won't be sent again until tomorrow.
+ */
+export async function markNotified(recordID: string): Promise<void> {
+    const today = getTodayString();
+    const url = `${POSTGREST_URL}/push_subscriptions?recordID=eq.${recordID}`;
+    const response = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+            'apikey': SERVICE_ROLE_KEY,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({ lastNotifiedDate: today }),
+    });
+
+    if (!response.ok) {
+        const body = await response.text();
+        console.error(`[queries] PATCH markNotified failed: ${response.status} — ${body}`);
+    }
 }
 
 /**
