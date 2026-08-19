@@ -1,6 +1,7 @@
 # Environment files containing secrets
 .env
 deploy/.env
+deploy/.env.*
 # dependencies
 /node_modules
 /notify-worker/node_modules
